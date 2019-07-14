@@ -15,9 +15,11 @@ def main():
     test_images = keras.utils.normalize(test_images, axis=1)
 
     model = keras.Sequential()
-    model.add(keras.layers.Flatten(input_shape=(28, 28)))
+    model.add(keras.layers.Conv2D(28, kernel_size=(3, 3), input_shape=(28, 28)))
+    model.add(keras.layers.MaxPooling2D(pool_size=(2, 2)))
+    model.add(keras.layers.Flatten())  # Flattening the 2D arrays for fully connected layers
     model.add(keras.layers.Dense(128, activation="relu"))
-    model.add(keras.layers.Dense(128, activation="relu"))
+    model.add(keras.layers.Dropout(0.2))
     model.add(keras.layers.Dense(len(set(train_labels)), activation="softmax"))
 
     # We use sparse_categorical_crossentropy since the labels are numbers 0-9 rather than one-hot encoded vectors
