@@ -1,5 +1,7 @@
 .vscode
 *.h5
+node_modules
+converted_model
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
