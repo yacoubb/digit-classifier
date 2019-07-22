@@ -1,35 +1,58 @@
 export default function drawingPad(p) {
+	let lastX = -1;
+	let lastY = -1;
+	let gotLast = false;
 	var renderFunc;
+	var model = false;
+	const thickness = 20;
+
 	p.setup = function() {
-		p.createCanvas(308, 308, p.WEBGL);
+		p.noLoop();
+		p.createCanvas(308, 308);
 		p.background(0);
 	};
 
 	p.myCustomRedrawAccordingToNewPropsHandler = function(props) {
 		renderFunc = props.renderToGrid;
+		if (typeof props.model === String) {
+			model = false;
+		} else {
+			model = true;
+		}
 	};
 
-	p.draw = function() {
-		p.fill(255);
+	p.mousePressed = function() {
 		p.noStroke();
-		p.translate(-p.width / 2, -p.height / 2);
-		if (p.mouseIsPressed) {
-			p.ellipse(p.mouseX, p.mouseY, 50, 50);
+		p.fill(255);
+		p.ellipse(p.mouseX, p.mouseY, thickness, thickness);
+	};
+
+	p.mouseDragged = function() {
+		if (!gotLast) {
+			lastX = p.mouseX;
+			lastY = p.mouseY;
+			gotLast = true;
 		}
+		p.stroke(255);
+		p.strokeWeight(thickness);
+		p.line(lastX, lastY, p.mouseX, p.mouseY);
+		lastX = p.mouseX;
+		lastY = p.mouseY;
 	};
 
 	p.keyPressed = function() {
 		if (p.keyCode === 32) {
-			p.background(54);
-			p.renderToGrid();
+			p.background(0);
+			p.renderToGrid(false);
 		}
 	};
 
 	p.mouseReleased = function() {
-		p.renderToGrid();
+		p.renderToGrid(true);
+		gotLast = false;
 	};
 
-	p.renderToGrid = function() {
+	p.renderToGrid = function(shouldPredict) {
 		console.log('rendering');
 		p.loadPixels();
 		let d = p.pixelDensity();
@@ -53,10 +76,21 @@ export default function drawingPad(p) {
 					}
 				}
 				avg = avg / count;
-				col.unshift(avg);
+				col.push(avg / 255);
 			}
 			grid.push(col);
 		}
-		renderFunc(grid);
+
+		checkModelDone(grid, shouldPredict);
 	};
+
+	function checkModelDone(grid, shouldPredict) {
+		if (model) {
+			renderFunc(grid, shouldPredict);
+		} else {
+			setTimeout(() => {
+				checkModelDone(grid, shouldPredict);
+			}, 10);
+		}
+	}
 }
