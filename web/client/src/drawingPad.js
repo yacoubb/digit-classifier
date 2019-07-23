@@ -3,17 +3,33 @@ export default function drawingPad(p) {
 	let lastY = -1;
 	let gotLast = false;
 	var renderFunc;
+	var predictFunc;
 	var model = false;
 	const thickness = 20;
+	// var targetSize = 0;
+	// let drawBackground = false;
 
 	p.setup = function() {
-		p.noLoop();
 		p.createCanvas(308, 308);
 		p.background(0);
+		p.noLoop();
 	};
 
+	// p.draw = function() {
+	// 	if (drawBackground) {
+	// 		p.background(0);
+	// 		drawBackground = false;
+	// 	}
+	// };
+
 	p.myCustomRedrawAccordingToNewPropsHandler = function(props) {
+		// if (props.size !== targetSize) {
+		// 	targetSize = props.size;
+		// 	p.resizeCanvas(targetSize, targetSize);
+		// 	drawBackground = true;
+		// }
 		renderFunc = props.renderToGrid;
+		predictFunc = props.renderedToGrid;
 		if (typeof props.model === String) {
 			model = false;
 		} else {
@@ -87,6 +103,7 @@ export default function drawingPad(p) {
 	function checkModelDone(grid, shouldPredict) {
 		if (model) {
 			renderFunc(grid, shouldPredict);
+			predictFunc();
 		} else {
 			setTimeout(() => {
 				checkModelDone(grid, shouldPredict);

@@ -1,6 +1,8 @@
 export default function networkDisplay(p) {
 	const gridSize = 28;
 	let propsGrid = [];
+	// var targetSize = 0;
+	// let drawBackground = false;
 
 	p.setup = function() {
 		p.createCanvas(308, 308);
@@ -8,7 +10,19 @@ export default function networkDisplay(p) {
 		p.noLoop();
 	};
 
+	// p.draw = function() {
+	// 	if (drawBackground) {
+	// 		p.background(0);
+	// 		drawBackground = false;
+	// 	}
+	// };
+
 	p.myCustomRedrawAccordingToNewPropsHandler = function(props) {
+		// if (props.size !== targetSize) {
+		// 	targetSize = props.size;
+		// 	p.resizeCanvas(targetSize, targetSize);
+		// 	drawBackground = true;
+		// }
 		if (props.grid.length === 0) {
 			return;
 		}
@@ -41,6 +55,5 @@ export default function networkDisplay(p) {
 				p.rect(x * pixelsInGrid, y * pixelsInGrid, pixelsInGrid, pixelsInGrid);
 			}
 		}
-		props.renderedToGrid();
 	};
 }

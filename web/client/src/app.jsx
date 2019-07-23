@@ -6,23 +6,34 @@ import DrawingCard from './drawingCard';
 
 var model;
 var xhr;
+const serverAddress = 'http://192.168.0.13:3003';
 
 class App extends Component {
 	constructor(props) {
 		super(props);
+		let landscape = window.innerWidth * 0.8 > window.innerHeight;
+		let cardWidth = 0;
+		if (landscape) {
+			cardWidth = window.innerWidth * 0.25;
+			cardWidth = cardWidth - (cardWidth % 28);
+		} else {
+			cardWidth = window.innerWidth * 0.6;
+			cardWidth = cardWidth - (cardWidth % 28);
+		}
 		this.state = {
 			model: 'loading',
+			metadata: {},
 			grid: [],
 			shouldPredict: false,
 			result: undefined,
 			confidence: 0,
 			confidenceList: [],
 			expected: '',
-			padSize: 308,
-			metadata: {}
+			padSize: cardWidth,
+			landscape: landscape
 		};
 
-		model = tf.loadLayersModel('http://localhost:3003/model');
+		model = tf.loadLayersModel(serverAddress + '/model');
 		model
 			.then(value => {
 				this.setState({ model: value });
@@ -35,9 +46,14 @@ class App extends Component {
 		this.getMetadata();
 	}
 
+	componentDidMount() {
+		this.resizeHandler();
+		window.addEventListener('resize', this.resizeHandler);
+	}
+
 	getMetadata = () => {
 		xhr = new XMLHttpRequest();
-		var url = 'http://localhost:3003/metadata';
+		var url = serverAddress + '/metadata';
 		xhr.open('GET', url, true);
 		xhr.send();
 
@@ -45,9 +61,21 @@ class App extends Component {
 			if (xhr.readyState === 4 && xhr.status === 200) {
 				var jsonData = JSON.parse(xhr.responseText);
 				this.setState({ metadata: jsonData });
-				console.log(jsonData);
 			}
 		};
+	};
+
+	resizeHandler = () => {
+		let landscape = window.innerWidth * 0.8 > window.innerHeight;
+		let cardWidth = 0;
+		if (landscape) {
+			cardWidth = window.innerWidth * 0.25;
+			cardWidth = cardWidth - (cardWidth % 28);
+		} else {
+			cardWidth = window.innerWidth * 0.6;
+			cardWidth = cardWidth - (cardWidth % 28);
+		}
+		this.setState({ landscape: landscape, padSize: cardWidth });
 	};
 
 	renderToGrid = (grid, shouldPredict) => {
@@ -55,7 +83,6 @@ class App extends Component {
 	};
 
 	renderedToGrid = () => {
-		console.log('render done');
 		if (!this.state.shouldPredict) {
 			this.setState({ result: undefined, confidence: 0, confidenceList: [] });
 			return;
@@ -96,31 +123,48 @@ class App extends Component {
 	}
 
 	render() {
+		if (typeof this.state.model === 'string') {
+			if (this.state.model === 'loading') {
+				return (
+					<div className="flex box">
+						<Typography variant="h1">Loading model...</Typography>
+					</div>
+				);
+			} else {
+				return (
+					<div style={{ height: '100%', padding: '0 auto', marginTop: '25vh' }}>
+						<Typography style={{ textAlign: 'center' }} variant="h1">
+							Loading model failed!
+						</Typography>
+						<br />
+						<Typography style={{ textAlign: 'center' }}>
+							The server at {serverAddress} responded with error code {xhr.status}
+							<br />
+							It should hopefully be back up at some point in the near future.
+							{/* TODO add link back to main portion of website for this downed page */}
+						</Typography>
+					</div>
+				);
+			}
+		}
 		return (
 			<React.Fragment>
-				<div style={{ width: '100%', height: `calc(${this.state.padSize}px + 8em)` }}>
-					<div
-						style={{ width: `calc(${2 * this.state.padSize}px + 24em)`, height: '100%', margin: '0 auto' }}
-					>
-						<DrawingCard
-							style={{ width: `${this.state.padSize}px`, marginRight: '2em' }}
-							size={this.state.padSize}
-							renderToGrid={this.renderToGrid}
-							model={this.state.model}
-						/>
-						<DisplayCard
-							style={{ width: `${this.state.padSize}px`, marginLeft: '2em' }}
-							size={this.state.padSize}
-							grid={this.state.grid}
-							renderedToGrid={this.renderedToGrid}
-						/>
-					</div>
+				<div className="flex box">
+					<DrawingCard
+						size={this.state.padSize}
+						model={this.state.model}
+						renderToGrid={this.renderToGrid}
+						renderedToGrid={this.renderedToGrid}
+					/>
+					{this.state.landscape && <DisplayCard size={this.state.padSize} grid={this.state.grid} />}
 				</div>
+
 				<Container>
 					<div style={{ textAlign: 'center' }}>
-						<Typography style={{ textAlign: 'center' }} variant="h2">
-							Start drawing!
-							<br />
+						<Typography style={{ textAlign: 'center' }} variant="h4">
+							Click and drag to draw. Space to clear.
+						</Typography>
+						<Typography variant="h2">
 							{this.state.result !== undefined && `${this.state.result}`}
 						</Typography>
 						<Typography style={{ textAlign: 'center' }} variant="body1">

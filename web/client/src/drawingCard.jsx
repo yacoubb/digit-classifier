@@ -13,13 +13,13 @@ class DrawingCard extends Component {
 			<Card className="displayCard">
 				<div>
 					Draw Here
-					<div style={{ width: '308px', height: '308px' }}>
-						<P5Wrapper
-							sketch={drawingPad}
-							renderToGrid={this.props.renderToGrid}
-							model={this.props.model}
-						/>
-					</div>
+					<P5Wrapper
+						sketch={drawingPad}
+						size={this.props.size}
+						model={this.props.model}
+						renderToGrid={this.props.renderToGrid}
+						renderedToGrid={this.props.renderedToGrid}
+					/>
 				</div>
 			</Card>
 		);

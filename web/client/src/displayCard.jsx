@@ -10,16 +10,19 @@ class DisplayCard extends Component {
 	}
 	render() {
 		return (
-			<Card className="displayCard">
+			<Card
+				id="displayCard"
+				className="displayCard"
+				onClick={() => {
+					document.getElementById('displayCard').classList.add('shake');
+					setTimeout(() => {
+						document.getElementById('displayCard').classList.remove('shake');
+					}, 1000);
+				}}
+			>
 				<div>
 					What the network sees
-					<div style={{ width: '308px', height: '308px' }}>
-						<P5Wrapper
-							sketch={networkDisplay}
-							grid={this.props.grid}
-							renderedToGrid={this.props.renderedToGrid}
-						/>
-					</div>
+					<P5Wrapper sketch={networkDisplay} size={this.props.size} grid={this.props.grid} />
 				</div>
 			</Card>
 		);
