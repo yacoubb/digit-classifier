@@ -31,9 +31,13 @@ code {
 }
 
 .displayCard {
-	float: left;
-	padding: 1em;
-	margin: 2em 2em 2em 2em;
+	display: none;
+}
+
+@media only screen and (min-width: 576px) {
+	.displayCard {
+		display: flex;
+	}
 }
 
 .box.flex {

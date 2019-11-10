@@ -1,5 +1,5 @@
 import React, { Component } from 'react';
-import { Card } from '@material-ui/core';
+import { Card } from 'react-bootstrap';
 import P5Wrapper from 'react-p5-wrapper';
 import networkDisplay from './networkDisplay';
 

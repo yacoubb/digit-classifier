@@ -16,7 +16,11 @@ app.use(
 		}
 	})
 );
+
 const fs = require('fs');
+const modelIndex = JSON.parse(fs.readFileSync('./model-index.json'));
+console.log(modelIndex);
+
 const http = require('http');
 const port = 4001;
 const credentials = {};
@@ -26,38 +30,30 @@ server.listen(port, err => {
 	console.log(`HTTP digit-classifier server running on port ${port}`);
 });
 
-app.get('/', (req, res) => {
-	res.end(
-		`<div>
-			<h1>Keras Model Server</h1>
-			<p>You shouldn't be back here!</p>
-		</div>`
-	);
-});
-
-app.get('/model', (req, res) => {
-	res.json(JSON.parse(fs.readFileSync('./converted_model/model.json')));
-});
-
-app.get('/metadata', (req, res) => {
-	res.json(JSON.parse(fs.readFileSync('./converted_model/metadata.json')));
-});
-
-// app.get('/binaries', (req, res) => {
-// 	console.log(req);
-// });
-
-app.get('/group1-shard1of1.bin', (req, res) => {
-	const readStream = fs.createReadStream('./converted_model/group1-shard1of1.bin');
-	readStream.pipe(res);
-});
-
-app.get('/group1-shard1of2.bin', (req, res) => {
-	const readStream = fs.createReadStream('./converted_model/group1-shard1of2.bin');
-	readStream.pipe(res);
-});
-
-app.get('/group1-shard2of2.bin', (req, res) => {
-	const readStream = fs.createReadStream('./converted_model/group1-shard2of2.bin');
-	readStream.pipe(res);
+app.get('*', (req, res) => {
+	console.log(req.path);
+	const path = req.params['0'];
+	if (path == '/') {
+		res.end(
+			`<div>
+                <h1>Keras Model Server</h1>
+                <p>You shouldn't be back here!</p>
+            </div>`
+		);
+		return;
+	}
+	if (path == '/index') {
+		console.log('requested index');
+		res.json(modelIndex);
+		return;
+	}
+	const relPath = `.${path}`;
+	console.log(`got model request: file ${relPath}`);
+	if (fs.existsSync(relPath)) {
+		const readStream = fs.createReadStream(relPath);
+		readStream.pipe(res);
+		return;
+	} else {
+		res.json({ error: `path ${relPath} doesn't exist` });
+	}
 });

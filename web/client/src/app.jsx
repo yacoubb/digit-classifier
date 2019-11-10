@@ -1,59 +1,100 @@
 import React, { Component } from 'react';
-import { Typography, Container } from '@material-ui/core';
 import * as tf from '@tensorflow/tfjs';
 import DisplayCard from './displayCard';
 import DrawingCard from './drawingCard';
+import { Dropdown, DropdownButton, Button } from 'react-bootstrap';
+import { Bar } from 'react-chartjs-2';
+import Header from './components/header';
 
 var model;
 var xhr;
-const serverAddress = 'http://192.168.0.13:3003';
+var resizeListener;
+var keydownListener;
+
+const serverAddress = 'https://yacoubahmed.me/api/digit-classifier/';
 
 class App extends Component {
 	constructor(props) {
 		super(props);
-		let landscape = window.innerWidth * 0.8 > window.innerHeight;
-		let cardWidth = 0;
-		if (landscape) {
-			cardWidth = window.innerWidth * 0.25;
-			cardWidth = cardWidth - (cardWidth % 28);
-		} else {
-			cardWidth = window.innerWidth * 0.6;
-			cardWidth = cardWidth - (cardWidth % 28);
-		}
 		this.state = {
-			model: 'loading',
-			metadata: {},
+			model: 'loading...',
+			metadata: null,
+			modelIndex: [],
+			selectedModelType: 'loading',
 			grid: [],
-			shouldPredict: false,
-			result: undefined,
-			confidence: 0,
-			confidenceList: [],
-			expected: '',
-			padSize: cardWidth,
-			landscape: landscape
+			padSize: 0
 		};
 
-		model = tf.loadLayersModel(serverAddress + '/model');
-		model
-			.then(value => {
-				this.setState({ model: value });
-			})
-			.catch(reason => {
-				this.setState({ model: 'failed' });
-				console.error(reason);
-			});
+		xhr = new XMLHttpRequest();
+		var url = serverAddress + '/index';
+		xhr.open('GET', url, true);
+		xhr.send();
 
-		this.getMetadata();
+		xhr.onreadystatechange = () => {
+			if (xhr.readyState === 4 && xhr.status === 200) {
+				var jsonData = JSON.parse(xhr.responseText);
+				this.setState({ modelIndex: jsonData }, () => {
+					const defaultType = Object.keys(this.state.modelIndex)[0];
+					this.setState({ selectedModelType: defaultType });
+				});
+			} else {
+				if (xhr.status === 0) {
+					this.setState({ model: 'failed - the server appears to be down' });
+				}
+			}
+		};
 	}
+
+	componentDidUpdate(prevProps, prevState) {
+		if (this.state.selectedModelType !== prevState.selectedModelType) {
+			console.log(`getting new model type ${this.state.selectedModelType}`);
+			this.setState({ model: 'loading...' }, () => {
+				model = tf.loadLayersModel(serverAddress + `/models/${this.state.selectedModelType}/model.json`);
+				model
+					.then(value => {
+						this.setState({ model: value });
+					})
+					.catch(reason => {
+						this.setState({ model: 'failed' });
+						console.error(reason);
+					});
+
+				this.getMetadata(this.state.selectedModelType);
+			});
+		}
+	}
+
+	keyDownHandler = event => {
+		if (event.keyCode === 'C'.charCodeAt(0)) {
+			let newTList = [];
+			for (let i = 0; i < Object.keys(this.state.metadata['dict']).length; i++) {
+				newTList.push(0);
+			}
+			this.setState({ tList: newTList });
+		}
+	};
 
 	componentDidMount() {
 		this.resizeHandler();
-		window.addEventListener('resize', this.resizeHandler);
+		resizeListener = window.addEventListener('resize', this.resizeHandler);
+		keydownListener = window.addEventListener('keydown', this.keyDownHandler);
+		setTimeout(() => {
+			this.resizeHandler();
+		}, 1);
+
+		setInterval(() => {
+			this.resizeHandler();
+		}, 1000);
 	}
 
-	getMetadata = () => {
+	componentWillUnmount() {
+		window.removeEventListener('resize', resizeListener);
+		window.removeEventListener('keydown', keydownListener);
+	}
+
+	getMetadata = type => {
 		xhr = new XMLHttpRequest();
-		var url = serverAddress + '/metadata';
+		var url = serverAddress + `/models/${type}/metadata.json`;
 		xhr.open('GET', url, true);
 		xhr.send();
 
@@ -66,27 +107,41 @@ class App extends Component {
 	};
 
 	resizeHandler = () => {
-		let landscape = window.innerWidth * 0.8 > window.innerHeight;
-		let cardWidth = 0;
-		if (landscape) {
-			cardWidth = window.innerWidth * 0.25;
-			cardWidth = cardWidth - (cardWidth % 28);
+		let padSize = 28 * 5;
+		if (window.innerWidth < 370) {
+			padSize = 28 * 8;
+		} else if (window.innerWidth < 576) {
+			padSize = 28 * 9;
+		} else if (window.innerWidth < 768) {
+			padSize = 28 * 7;
 		} else {
-			cardWidth = window.innerWidth * 0.6;
-			cardWidth = cardWidth - (cardWidth % 28);
+			padSize = 28 * 9;
 		}
-		this.setState({ landscape: landscape, padSize: cardWidth });
+		// } else if (window.innerWidth < 992) {
+		// 	padSize = 28 * 9;
+		// } else if (window.innerWidth < 1200) {
+		// 	padSize = 28 * 9;
+		// } else {
+		// 	padSize = 28 * 9;
+		// }
+		if (this.state.padSize !== padSize) {
+			this.setState({ padSize: padSize });
+		}
 	};
 
-	renderToGrid = (grid, shouldPredict) => {
-		this.setState({ grid: grid, shouldPredict: shouldPredict });
+	renderToGrid = grid => {
+		console.log('got new grid');
+		this.setState({ grid: grid });
 	};
 
-	renderedToGrid = () => {
-		if (!this.state.shouldPredict) {
-			this.setState({ result: undefined, confidence: 0, confidenceList: [] });
+	modelPredict = () => {
+		if (typeof this.state.model === 'string') {
+			setTimeout(() => {
+				this.modelPredict();
+			}, 100);
 			return;
 		}
+		console.log('doing prediction');
 		// we have to rotate the pixel grid since MNIST data is ordered differently
 		let flippedGrid = [];
 		for (let x = 0; x < this.state.grid.length; x++) {
@@ -95,93 +150,134 @@ class App extends Component {
 				// insert pixels the other way round
 				// we also insert pixels contained in a [array] to match the reshaping done during training
 				col.push([this.state.grid[y][x]]);
-				// col.push(this.state.grid[y][x]);
 			}
 			flippedGrid.push(col);
 		}
+		console.log(flippedGrid);
 		// let tensorGrid = tf.tensor3d([flippedGrid]);
 		let tensorGrid = tf.tensor4d([flippedGrid]);
 		const prediction = this.state.model.predict(tensorGrid);
-		const result = tf.argMax(prediction, 1).dataSync()[0];
 		var tList = prediction.dataSync();
 		tList = Array.prototype.slice.call(tList);
-		let confidence = Math.round(tList[result] * 1000) / 10.0;
-		tList = tList.map((val, idx) => [Math.round(val * 1000.0) / 10.0, idx]);
-		tList = tList.filter(val => val[0] > 0.1);
-		tList = tList.sort((a, b) => b[0] - a[0]);
-		tList.shift();
-		this.setState({
-			result: this.state.metadata[result],
-			expected: '',
-			confidence: confidence,
-			confidenceList: tList
-		});
+		tList = tList.map(val => Math.round(val * 1000.0) / 10.0);
+		console.log(tList);
+		if (this.state.selectedModelType === 'letters') {
+			tList.shift();
+		}
+		this.setState({ tList: tList });
+		// tList = tList.map((val, idx) => [this.state.metadata['dict'][idx], Math.round(val * 1000.0) / 10.0]);
+		// tList = tList.filter((val, idx) => val[1] > 0);
+		// tList.sort((a, b) => b[1] - a[1]);
+		// console.log(tList);
 	};
 
-	argMax(array) {
-		return array.map((x, i) => [x, i]).reduce((r, a) => (a[0] > r[0] ? a : r))[1];
-	}
-
 	render() {
-		if (typeof this.state.model === 'string') {
-			if (this.state.model === 'loading') {
-				return (
-					<div className="flex box">
-						<Typography variant="h1">Loading model...</Typography>
-					</div>
-				);
-			} else {
-				return (
-					<div style={{ height: '100%', padding: '0 auto', marginTop: '25vh' }}>
-						<Typography style={{ textAlign: 'center' }} variant="h1">
-							Loading model failed!
-						</Typography>
-						<br />
-						<Typography style={{ textAlign: 'center' }}>
-							The server at {serverAddress} responded with error code {xhr.status}
-							<br />
-							It should hopefully be back up at some point in the near future.
-							{/* TODO add link back to main portion of website for this downed page */}
-						</Typography>
-					</div>
-				);
-			}
+		// TODO implement model failed screen
+		if (this.state.metadata !== null) {
+			console.log(Object.values(this.state.metadata['dict']));
 		}
 		return (
 			<React.Fragment>
-				<div className="flex box">
-					<DrawingCard
-						size={this.state.padSize}
-						model={this.state.model}
-						renderToGrid={this.renderToGrid}
-						renderedToGrid={this.renderedToGrid}
-					/>
-					{this.state.landscape && <DisplayCard size={this.state.padSize} grid={this.state.grid} />}
-				</div>
-
-				<Container>
-					<div style={{ textAlign: 'center' }}>
-						<Typography style={{ textAlign: 'center' }} variant="h4">
-							Click and drag to draw. Space to clear.
-						</Typography>
-						<Typography variant="h2">
-							{this.state.result !== undefined && `${this.state.result}`}
-						</Typography>
-						<Typography style={{ textAlign: 'center' }} variant="body1">
-							{this.state.confidence > 0 && `${this.state.confidence}% confidence`}
-						</Typography>
-						<div>
-							{this.state.confidenceList.map((val, idx) => (
-								<React.Fragment key={idx}>
-									<br />
-									<Typography style={{ textAlign: 'center' }} variant="caption">
-										{this.state.metadata[val[1]]} : {val[0]}%
-									</Typography>
-								</React.Fragment>
-							))}
+				<div className="container">
+					<Header></Header>
+					<div className="row" style={{ margin: '1em', textAlign: 'center' }}>
+						<div className="col-sm">
+							Model Type:{' '}
+							<DropdownButton
+								variant="success"
+								id="dropdown-basic"
+								title={this.state.selectedModelType}
+								style={{ display: 'inline-block' }}
+							>
+								{Object.keys(this.state.modelIndex).map((val, idx, arr) => (
+									<Dropdown.Item
+										as="button"
+										onClick={() => {
+											console.log(`dropdown set to ${val}`);
+											this.setState({ selectedModelType: val });
+										}}
+										eventKey={idx}
+										key={idx}
+									>
+										{val}
+									</Dropdown.Item>
+								))}
+							</DropdownButton>
+						</div>
+						<div className="col-sm">
+							Model status: {typeof this.state.model === 'string' ? this.state.model : 'loaded'}
 						</div>
 					</div>
-				</Container>
+					{typeof this.state.model !== 'string' && (
+						<div className="row" style={{ margin: '1em', textAlign: 'center' }}>
+							<div className="col">{this.state.modelIndex[this.state.selectedModelType]}</div>
+						</div>
+					)}
+
+					<div className="row" style={{ margin: '1em' }}>
+						<div className="col-lg-1"> </div>
+						<div className="col-sm" style={{ textAlign: 'center' }}>
+							<DrawingCard
+								size={this.state.padSize}
+								model={this.state.model}
+								renderToGrid={this.renderToGrid}
+							/>
+						</div>
+						<div className="col-sm" style={{ textAlign: 'center' }}>
+							<DisplayCard size={this.state.padSize} grid={this.state.grid} />
+						</div>
+						<div className="col-lg-1"> </div>
+					</div>
+					<div className="row">
+						<div className="col"> </div>
+						<div className="col" style={{ textAlign: 'center' }}>
+							<Button
+								onClick={() => {
+									this.modelPredict();
+								}}
+							>
+								Predict
+							</Button>
+						</div>
+						<div className="col"> </div>
+					</div>
+					<div className="row">
+						<div className="col"> </div>
+						<div className="col" style={{ textAlign: 'center' }}>
+							<sub>Press C to clear</sub>
+						</div>
+						<div className="col"> </div>
+					</div>
+					<div className="row" style={{ margin: '1em' }}>
+						{this.state.metadata && (
+							<Bar
+								data={{
+									labels: Object.values(this.state.metadata['dict']),
+									datasets: [
+										{
+											label: 'Prediction',
+											backgroundColor: 'rgb(255, 99, 132)',
+											borderColor: 'rgb(255, 99, 132)',
+											data: this.state.tList
+										}
+									]
+								}}
+								options={{
+									scales: {
+										yAxes: [
+											{
+												ticks: {
+													beginAtZero: true,
+													suggestedMax: 100
+												}
+											}
+										]
+									}
+								}}
+							></Bar>
+						)}
+					</div>
+				</div>
 			</React.Fragment>
 		);
 	}

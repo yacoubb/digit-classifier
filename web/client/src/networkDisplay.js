@@ -1,28 +1,28 @@
 export default function networkDisplay(p) {
 	const gridSize = 28;
 	let propsGrid = [];
-	// var targetSize = 0;
-	// let drawBackground = false;
 
 	p.setup = function() {
-		p.createCanvas(308, 308);
+		p.createCanvas(28 * 5, 28 * 5);
 		p.background(0);
-		p.noLoop();
+		// p.noLoop();
 	};
 
-	// p.draw = function() {
-	// 	if (drawBackground) {
-	// 		p.background(0);
-	// 		drawBackground = false;
-	// 	}
-	// };
+	let drawBackground = false;
+
+	p.draw = function() {
+		if (drawBackground) {
+			p.background(0);
+			drawBackground = false;
+		}
+	};
 
 	p.myCustomRedrawAccordingToNewPropsHandler = function(props) {
-		// if (props.size !== targetSize) {
-		// 	targetSize = props.size;
-		// 	p.resizeCanvas(targetSize, targetSize);
-		// 	drawBackground = true;
-		// }
+		if (p.width !== props.size) {
+			p.resizeCanvas(props.size, props.size);
+			drawBackground = true;
+		}
+
 		if (props.grid.length === 0) {
 			return;
 		}

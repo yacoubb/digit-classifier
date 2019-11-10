@@ -1,5 +1,5 @@
 import React, { Component } from 'react';
-import { Card } from '@material-ui/core';
+import { Card } from 'react-bootstrap';
 import P5Wrapper from 'react-p5-wrapper';
 import drawingPad from './drawingPad';
 
@@ -10,7 +10,7 @@ class DrawingCard extends Component {
 	}
 	render() {
 		return (
-			<Card className="displayCard">
+			<Card>
 				<div>
 					Draw Here
 					<P5Wrapper
