@@ -17,18 +17,43 @@ app.use(
 	})
 );
 
+const port = 4001;
+
 const fs = require('fs');
 const modelIndex = JSON.parse(fs.readFileSync('./model-index.json'));
 console.log(modelIndex);
 
-const http = require('http');
-const port = 4001;
-const credentials = {};
-const server = http.createServer(credentials, app);
-server.listen(port, err => {
-	if (err) console.error(err);
-	console.log(`HTTP digit-classifier server running on port ${port}`);
-});
+var privateKey;
+var certificate;
+var ca;
+
+let devMode = process.argv.length >= 3 ? (process.argv[2] == 'dev' ? true : false) : false;
+
+if (devMode) {
+	const http = require('http');
+	const credentials = {};
+	const server = http.createServer(credentials, app);
+	server.listen(port, err => {
+		if (err) console.error(err);
+		console.log(`HTTP digit-classifier server running on port ${port}`);
+	});
+} else {
+	privateKey = fs.readFileSync('/etc/letsencrypt/live/yacoubahmed.me/privkey.pem', 'utf8');
+	certificate = fs.readFileSync('/etc/letsencrypt/live/yacoubahmed.me/cert.pem', 'utf8');
+	ca = fs.readFileSync('/etc/letsencrypt/live/yacoubahmed.me/chain.pem', 'utf8');
+	const credentials = {
+		key: privateKey,
+		cert: certificate,
+		ca: ca,
+		rejectUnauthorized: false
+	};
+
+	const secureServer = https.createServer(credentials, app);
+	secureServer.listen(port, err => {
+		if (err) console.error(err);
+		console.log(`HTTPS Castles server running on port ${port}`);
+	});
+}
 
 app.get('*', (req, res) => {
 	console.log(req.path);
