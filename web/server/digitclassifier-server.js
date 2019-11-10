@@ -51,7 +51,7 @@ if (devMode) {
 	const secureServer = https.createServer(credentials, app);
 	secureServer.listen(port, err => {
 		if (err) console.error(err);
-		console.log(`HTTPS Castles server running on port ${port}`);
+		console.log(`HTTPS digit-classifier server running on port ${port}`);
 	});
 }
 
