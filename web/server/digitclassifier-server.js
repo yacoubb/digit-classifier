@@ -38,6 +38,7 @@ if (devMode) {
 		console.log(`HTTP digit-classifier server running on port ${port}`);
 	});
 } else {
+	const https = require('https');
 	privateKey = fs.readFileSync('/etc/letsencrypt/live/yacoubahmed.me/privkey.pem', 'utf8');
 	certificate = fs.readFileSync('/etc/letsencrypt/live/yacoubahmed.me/cert.pem', 'utf8');
 	ca = fs.readFileSync('/etc/letsencrypt/live/yacoubahmed.me/chain.pem', 'utf8');
