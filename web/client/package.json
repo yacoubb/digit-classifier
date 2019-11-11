@@ -2,6 +2,7 @@
 	"name": "client",
 	"version": "0.1.0",
 	"private": true,
+	"homepage": "https://yacoubahmed.me/digit-classifier/",
 	"dependencies": {
 		"@tensorflow/tfjs": "^1.2.2",
 		"bootstrap": "^4.3.1",
